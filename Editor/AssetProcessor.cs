@@ -1,6 +1,8 @@
 ﻿using UnityEditor;
 using System.Collections.Generic;
 using System;
+#if false
+
 
 namespace Ogxd.ProjectCurator
 {
@@ -73,3 +75,5 @@ namespace Ogxd.ProjectCurator
         }
     }
 }
+
+#endif

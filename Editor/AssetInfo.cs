@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
@@ -55,9 +57,74 @@ namespace Ogxd.ProjectCurator
             this.path = path;
         }
 
-        public string[] GetDependencies()
+        private string[] GetDependInternal(string path, bool recursive = true, bool calcTpSheet = false)
         {
-            return AssetDatabase.GetDependencies(path);
+            if (path.EndsWith(".shadergraph"))//shadergraph打包后为shader,里面强制处理成不引用其它资源
+            {
+                return new string[0];
+            }
+            var deps = AssetDatabase.GetDependencies(path, recursive);
+            var newDeps = new HashSet<string>();
+            foreach (var dep in deps)
+            {
+                newDeps.Add(dep);
+                if (calcTpSheet && dep.EndsWith(".png") && dep.StartsWith(ProjectCurator.TpSheetPath))
+                {
+                    var tpsheetguid = AssetDatabase.AssetPathToGUID(dep);
+                    var allText = File.ReadAllText(path);
+                    var matches = Regex.Matches(allText, @"{fileID: (.*), guid: " + tpsheetguid);
+                    foreach (Match match in matches)
+                    {
+                        var fileid = match.Groups[1];
+                        if (ProjectCurator.TpSheetFileId2Name[dep].TryGetValue(fileid.ToString(), out var spname))
+                        {
+                            newDeps.Add(dep + "@" + spname);    
+                        }
+                    }
+                }
+            }
+            return newDeps.ToArray();
+        }
+        public string[] GetDependencies(bool recursive = true, bool calcTpSheet = false)
+        {
+            //songtm 2020.09.15 索引lua支持!
+            if (path.EndsWith("config_ui_info.lua"))
+            {
+                var readLines = File.ReadLines(path);
+                List<string> res = new List<string>();
+                foreach (var line in readLines)
+                {
+                    var indexOf = line.IndexOf("guid = \"", StringComparison.Ordinal);
+                    if (indexOf > 0 && line.Length > indexOf + 40)
+                    {
+                        var prefabguid = line.Substring(indexOf + 8, 32);
+                        var assetPath = AssetDatabase.GUIDToAssetPath(prefabguid);
+                        if (!string.IsNullOrEmpty(assetPath))
+                            res.Add(assetPath);
+                    }
+                }
+
+                return res.ToArray();
+            }
+            if (path.EndsWith(".prefab") && path.StartsWith("Assets/XRes/UI/"))
+            {
+                var allText = File.ReadAllText(path);
+                var index = allText.IndexOf("m_AssetGUID: ", StringComparison.Ordinal);//支持prefab中显示对lua的引用?
+                if (index >= 0)
+                {
+                    var luaguid = allText.Substring(index + 13, 32);
+                    var assetPath = AssetDatabase.GUIDToAssetPath(luaguid);
+                    if (!string.IsNullOrEmpty(assetPath))
+                    {
+                        var deps = GetDependInternal(path, recursive);
+                        var res = new string[deps.Length + 1];
+                        deps.CopyTo(res, 0);
+                        res[res.Length - 1] = assetPath;
+                        return res;
+                    }
+                }
+            }
+            return GetDependInternal(path, recursive, calcTpSheet);
         }
 
         public void ClearIncludedStatus()
@@ -65,6 +132,15 @@ namespace Ogxd.ProjectCurator
             includedStatus = IncludedInBuild.Unknown;
         }
 
+        public bool IsRefBySpriteAtlas()
+        {
+            foreach (var referencer in referencers)
+            {
+                if (referencer.EndsWith(".spriteatlas")) return true;
+            }
+
+            return false;
+        }
         [NonSerialized]
         private IncludedInBuild includedStatus;
 

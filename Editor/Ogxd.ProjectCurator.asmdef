@@ -1,6 +1,9 @@
 {
     "name": "Ogxd.ProjectCurator",
-    "references": [],
+    "rootNamespace": "",
+    "references": [
+        "GUID:381786d553d2b2142b6de1b5c189a9b1"
+    ],
     "includePlatforms": [
         "Editor"
     ],

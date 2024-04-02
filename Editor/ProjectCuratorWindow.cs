@@ -1,6 +1,11 @@
-﻿using System.IO;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Text.RegularExpressions;
+using SFrame;
 using UnityEditor;
+using UnityEditor.Experimental.SceneManagement;
+// using UnityEditor.AddressableAssets.Build.DataBuilders;
 using UnityEngine;
 
 namespace Ogxd.ProjectCurator
@@ -8,7 +13,7 @@ namespace Ogxd.ProjectCurator
     public class ProjectCuratorWindow : EditorWindow, IHasCustomMenu
     {
 
-        [MenuItem("Window/Project Curator")]
+        [MenuItem("Tools/Project Curator[✂Asset Reference]", false, 50)]
         static void Init()
         {
             GetWindow<ProjectCuratorWindow>("Project Curator");
@@ -26,18 +31,35 @@ namespace Ogxd.ProjectCurator
 
         private Vector2 scroll;
 
+        private bool locked = false;
+        private bool fullPath = true;
+        private bool showCSfile = true;
+        private bool includePackage = false;
+        private string lockedguid = null;
+
         private bool dependenciesOpen = true;
         private bool referencesOpen = true;
+        private Dictionary<string, bool> depBundleFoldout = new Dictionary<string, bool>();
+        private Dictionary<string, bool> refBundleFoldout = new Dictionary<string, bool>();
 
         private static GUIStyle titleStyle;
         private static GUIStyle TitleStyle => titleStyle ?? (titleStyle = new GUIStyle(EditorStyles.label) { fontSize = 13 });
 
         private static GUIStyle itemStyle;
-        private static GUIStyle ItemStyle => itemStyle ?? (itemStyle = new GUIStyle(EditorStyles.label) { margin = new RectOffset(32, 0, 0, 0) });
+        private static GUIStyle ItemStyle => itemStyle ?? (itemStyle = new GUIStyle(EditorStyles.label) { margin = new RectOffset(48, 0, 0, 0) });
 
         private void OnGUI()
         {
             string selectedPath = AssetDatabase.GetAssetPath(UnityEditor.Selection.activeObject);
+            if (selectedPath.StartsWith(ProjectCurator.TpSheetPath) && Selection.activeObject is Sprite)
+            {
+                selectedPath += "@" + Selection.activeObject.name;
+            }
+            if (lockedguid != null)////songtm
+            {
+                var lockedPath = AssetDatabase.GUIDToAssetPath(lockedguid);
+                if (!string.IsNullOrEmpty(lockedPath)) selectedPath = lockedPath;
+            }
             if (string.IsNullOrEmpty(selectedPath))
                 return;
 
@@ -47,14 +69,51 @@ namespace Ogxd.ProjectCurator
             Rect rect;
 
             GUILayout.BeginHorizontal("In BigTitle");
-            GUILayout.Label(AssetDatabase.GetCachedIcon(selectedPath), GUILayout.Width(36), GUILayout.Height(36));
+            // GUILayout.Label(AssetDatabase.GetCachedIcon(selectedPath), GUILayout.Width(36), GUILayout.Height(36));
+            if (GUILayout.Button(AssetDatabase.GetCachedIcon(selectedPath), GUILayout.Width(36), GUILayout.Height(36)))
+            {
+                CustomEditorUtil.SetHirarchySearchFilter("ref:" + selectedPath);
+            }
             GUILayout.BeginVertical();
-            GUILayout.Label(Path.GetFileName(selectedPath), TitleStyle);
+            // GUILayout.Label(Path.GetFileName(selectedPath), TitleStyle);
+            if (GUILayout.Button(Path.GetFileName(selectedPath)))//songtm
+            {
+                var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(selectedPath);
+                Selection.activeObject = obj;
+                EditorGUIUtility.PingObject(obj);
+            }
             // Display directory (without "Assets/" prefix)
             GUILayout.Label(Regex.Match(Path.GetDirectoryName(selectedPath), "(\\\\.*)$").Value);
             rect = GUILayoutUtility.GetLastRect();
             GUILayout.EndVertical();
             GUILayout.Space(44);
+            //////////songtm
+            GUILayout.BeginVertical();
+            locked = GUILayout.Toggle(locked, "Lock");
+            if (locked)
+            {
+                if (lockedguid == null)
+                {
+                    lockedguid = AssetDatabase.AssetPathToGUID(selectedPath);
+                }
+            }
+            else
+            {
+                lockedguid = null;
+            }
+            if (GUILayout.Button("New", GUILayout.MaxWidth(50)))
+            {
+                CreateWindow<ProjectCuratorWindow>("Project Curator");
+            }
+            
+            GUILayout.EndVertical();
+            GUILayout.BeginVertical();
+            fullPath = GUILayout.Toggle(fullPath, "fullPath");
+            showCSfile = GUILayout.Toggle(showCSfile, "showC#");
+            GUILayout.EndVertical();
+            
+            includePackage = GUILayout.Toggle(includePackage, "IndexPkg");
+            //////////end
             GUILayout.EndHorizontal();
 
             if (Directory.Exists(selectedPath))
@@ -75,55 +134,157 @@ namespace Ogxd.ProjectCurator
             scroll = GUILayout.BeginScrollView(scroll);
 
             dependenciesOpen = EditorGUILayout.Foldout(dependenciesOpen, $"Dependencies ({selectedAssetInfo.dependencies.Count})");
-            if (dependenciesOpen) {
-                foreach (var dependency in selectedAssetInfo.dependencies) {
-                    if (GUILayout.Button(Path.GetFileName(dependency), ItemStyle)) {
-                        UnityEditor.Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(dependency);
+            if (dependenciesOpen)
+            {
+                EditorGUI.indentLevel = 1;
+                var dic = GroupAssets(selectedAssetInfo.dependencies);
+                foreach (var pair in dic)
+                {
+                    var bundle = pair.Key;
+                    if (!depBundleFoldout.TryGetValue(bundle, out var folded))
+                    {
+                        folded = true;
                     }
-                    rect = GUILayoutUtility.GetLastRect();
-                    GUI.DrawTexture(new Rect(rect.x - 16, rect.y, rect.height, rect.height), AssetDatabase.GetCachedIcon(dependency));
-                    AssetInfo depInfo = ProjectCurator.GetAsset(dependency);
-                    content = new GUIContent(depInfo.IsIncludedInBuild ? ProjectIcons.LinkBlue : ProjectIcons.LinkBlack, depInfo.IncludedStatus.ToString());
-                    GUI.Label(new Rect(rect.width + rect.x - 20, rect.y + 1, 16, 16), content);
+                    
+                    depBundleFoldout[bundle] = EditorGUILayout.Foldout(folded, $"{bundle} ({pair.Value.Count})");
+                    if (!depBundleFoldout[bundle]) continue;
+                    string preDir = null;
+                    foreach (var dependency in pair.Value)
+                    {
+                        var realPath = dependency;
+                        // var indexOf = dependency.IndexOf('@');
+                        // if (indexOf >= 0) realPath = dependency.Substring(0, indexOf);
+
+                        if (GUILayout.Button(fullPath ? dependency : Path.GetFileName(dependency), ItemStyle))
+                        {
+                            UnityEditor.Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(realPath);
+                            EditorGUIUtility.PingObject(Selection.activeObject);
+                        }
+                        rect = GUILayoutUtility.GetLastRect();
+                        var curDir = Path.GetDirectoryName(dependency);
+                        if (fullPath &&(preDir != null && curDir != preDir))
+                        {
+                            EditorGUI.DrawRect(new Rect(rect.xMin, rect.yMin, rect.width, 1), Color.blue);
+                        }
+                        preDir = curDir;
+                        
+                        var cachedIcon = AssetDatabase.GetCachedIcon(realPath);
+                        if (cachedIcon != null)//songtm资源删除后 cacheIcon为null,但database并未更新时
+                        {
+                            GUI.DrawTexture(new Rect(rect.x -16, rect.y, rect.height, rect.height), cachedIcon);
+                        }
+                        AssetInfo depInfo = ProjectCurator.GetAsset(dependency);
+                        content = new GUIContent(depInfo.IsIncludedInBuild ? ProjectIcons.LinkBlue : ProjectIcons.LinkBlack, depInfo.IncludedStatus.ToString());
+                        GUI.Label(new Rect(rect.width + rect.x - 20, rect.y + 1, 16, 16), content);
+                    }
                 }
             }
 
             GUILayout.Space(6);
-
+            EditorGUI.indentLevel = 0;
             referencesOpen = EditorGUILayout.Foldout(referencesOpen, $"Referencers ({selectedAssetInfo.referencers.Count})");
             if (referencesOpen) {
-                foreach (var referencer in selectedAssetInfo.referencers) {
-                    if (GUILayout.Button(Path.GetFileName(referencer), ItemStyle)) {
-                        UnityEditor.Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(referencer);
+                EditorGUI.indentLevel = 1;
+                var dic = GroupAssets(selectedAssetInfo.referencers);
+                foreach (var pair in dic)
+                {
+                    var bundle = pair.Key;
+                    if (!refBundleFoldout.TryGetValue(bundle, out var folded))
+                    {
+                        folded = true;
                     }
-                    rect = GUILayoutUtility.GetLastRect();
-                    GUI.DrawTexture(new Rect(rect.x - 16, rect.y, rect.height, rect.height), AssetDatabase.GetCachedIcon(referencer));
-                    AssetInfo refInfo = ProjectCurator.GetAsset(referencer);
-                    content = new GUIContent(refInfo.IsIncludedInBuild ? ProjectIcons.LinkBlue : ProjectIcons.LinkBlack, refInfo.IncludedStatus.ToString());
-                    GUI.Label(new Rect(rect.width + rect.x - 20, rect.y + 1, 16, 16), content);
+                    refBundleFoldout[bundle] = EditorGUILayout.Foldout(folded, $"{bundle} ({pair.Value.Count})");
+                    if (!refBundleFoldout[bundle]) continue;
+
+                    foreach (var referencer in pair.Value)
+                    {
+                        if (GUILayout.Button(fullPath ? referencer : Path.GetFileName(referencer), ItemStyle)) {
+                            UnityEditor.Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(referencer);
+                            EditorGUIUtility.PingObject(Selection.activeObject);
+                        }
+                        rect = GUILayoutUtility.GetLastRect();
+                        var cachedIcon = AssetDatabase.GetCachedIcon(referencer);
+                        if (cachedIcon != null) //songtm资源删除后 cacheIcon为null,但database并未更新时
+                        {
+                            GUI.DrawTexture(new Rect(rect.x - 16, rect.y, rect.height, rect.height), cachedIcon);
+                        }
+
+                        AssetInfo refInfo = ProjectCurator.GetAsset(referencer);
+                        content = new GUIContent(refInfo.IsIncludedInBuild ? ProjectIcons.LinkBlue : ProjectIcons.LinkBlack, refInfo.IncludedStatus.ToString());
+                        GUI.Label(new Rect(rect.width + rect.x - 20, rect.y + 1, 16, 16), content);
+                    }
                 }
             }
-
+            EditorGUI.indentLevel = 0;
             GUILayout.Space(5);
 
             GUILayout.EndScrollView();
 
             if (!selectedAssetInfo.IsIncludedInBuild) {
                 bool deleteClicked = HelpBoxWithButton(new GUIContent("This asset is not referenced and never used. Would you like to delete it ?", EditorGUIUtility.IconContent("console.warnicon").image), new GUIContent("Delete Asset"));
-                if (deleteClicked) {
-                    File.Delete(selectedPath);
-                    AssetDatabase.Refresh();
-                    ProjectCurator.RemoveAssetFromDatabase(selectedPath);
+                if (deleteClicked)
+                {
+                    var delPath = selectedPath;
+                    if (selectedPath.Contains("@"))
+                    {
+                        var indexOf = selectedPath.IndexOf('@');
+                        var realPath = selectedPath.Substring(0, indexOf);
+                        var subname = selectedPath.Substring(indexOf + 1);
+                        delPath = ProjectCurator.TpSrcPath + Path.GetFileNameWithoutExtension(realPath) + "/" +
+                                      subname + ".png";
+                        delPath = Path.GetFullPath(delPath);
+                    }
+                    if (EditorUtility.DisplayDialog("delete file?", delPath, "ok", "cancel"))
+                    {
+                        File.Delete(delPath);
+                        AssetDatabase.Refresh();
+                        ProjectCurator.RemoveAssetFromDatabase(selectedPath);    
+                    }
                 }
             }
         }
 
+        Dictionary<string, List<string>> GroupAssets(HashSet<string> set)
+        {
+            var dic = new Dictionary<string, List<string>>();
+            foreach (var s in set)
+            {
+                if (!showCSfile && s.EndsWith(".cs")) continue;
+                var bundle = GetBundleNameStr(null, s);
+                if (!dic.ContainsKey(bundle))
+                {
+                    dic[bundle] = new List<string>();
+                }
+                dic[bundle].Add(s);
+            }
+            foreach (var keyValuePair in dic)
+            {
+                keyValuePair.Value.Sort();
+            }
+            return dic;
+        }
+        
+        string GetBundleNameStr(string self, string assetpath)
+        {/*
+            if (BuildScriptPackedMode.AssetName2BundleName.TryGetValue(assetpath, out var bundleName))
+            {
+                // bundleName = "[" + bundleName + "] ";
+            }
+
+            return bundleName ?? "not in bundle";*/
+            return Path.GetExtension(assetpath);
+        }
+        
         void IHasCustomMenu.AddItemsToMenu(GenericMenu menu)
         {
-            menu.AddItem(new GUIContent("Rebuild Database"), false, ProjectCurator.RebuildDatabase);
+            menu.AddItem(new GUIContent("Rebuild Database 直接间接引用"), false, () => ProjectCurator.RebuildDatabase(true, false, includePackage));
+            menu.AddItem(new GUIContent("Rebuild Database 直接引用"), false, () => ProjectCurator.RebuildDatabase(false, false, includePackage));
+            menu.AddItem(new GUIContent("Rebuild Database 直接引用+TP图集子图引用"), false, () => ProjectCurator.RebuildDatabase(false, true, includePackage));
+            menu.AddItem(new GUIContent("Build Deps graph"), false, ProjectCurator.BuildDepsGraph);
             menu.AddItem(new GUIContent("Clear Database"), false, ProjectCurator.ClearDatabase);
-            menu.AddItem(new GUIContent("Project Overlay"), ProjectWindowOverlay.Enabled, () => { ProjectWindowOverlay.Enabled = !ProjectWindowOverlay.Enabled; });
+            // menu.AddItem(new GUIContent("Project Overlay"), ProjectWindowOverlay.Enabled, () => { ProjectWindowOverlay.Enabled = !ProjectWindowOverlay.Enabled; });
         }
+
 
         public bool HelpBoxWithButton(GUIContent messageContent, GUIContent buttonContent)
         {
