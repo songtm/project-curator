@@ -76,11 +76,10 @@ namespace Ogxd.ProjectCurator
             }
             GUILayout.BeginVertical();
             // GUILayout.Label(Path.GetFileName(selectedPath), TitleStyle);
-            if (GUILayout.Button(Path.GetFileName(selectedPath)))//songtm
+            if (GUILayout.Button(new GUIContent(Path.GetFileName(selectedPath), "reveal in project window")))//songtm
             {
                 var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(selectedPath);
-                Selection.activeObject = obj;
-                EditorGUIUtility.PingObject(obj);
+                CustomEditorUtil.VisibleInProjectWindow(obj);
             }
             // Display directory (without "Assets/" prefix)
             GUILayout.Label(Regex.Match(Path.GetDirectoryName(selectedPath), "(\\\\.*)$").Value);
@@ -157,8 +156,8 @@ namespace Ogxd.ProjectCurator
 
                         if (GUILayout.Button(fullPath ? dependency : Path.GetFileName(dependency), ItemStyle))
                         {
-                            UnityEditor.Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(realPath);
-                            EditorGUIUtility.PingObject(Selection.activeObject);
+                            var activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(realPath);
+                            CustomEditorUtil.VisibleInProjectWindow(activeObject);
                         }
                         rect = GUILayoutUtility.GetLastRect();
                         var curDir = Path.GetDirectoryName(dependency);
@@ -199,8 +198,8 @@ namespace Ogxd.ProjectCurator
                     foreach (var referencer in pair.Value)
                     {
                         if (GUILayout.Button(fullPath ? referencer : Path.GetFileName(referencer), ItemStyle)) {
-                            UnityEditor.Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(referencer);
-                            EditorGUIUtility.PingObject(Selection.activeObject);
+                            var activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(referencer);
+                            CustomEditorUtil.VisibleInProjectWindow(activeObject);
                         }
                         rect = GUILayoutUtility.GetLastRect();
                         var cachedIcon = AssetDatabase.GetCachedIcon(referencer);

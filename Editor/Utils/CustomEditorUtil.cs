@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace SFrame
 {
@@ -85,6 +86,12 @@ namespace SFrame
             }
         }
 
+        public static void VisibleInProjectWindow(Object obj, bool ping = true)
+        {
+            Selection.activeObject = obj;
+            EditorUtility.FocusProjectWindow();
+            if (ping) EditorGUIUtility.PingObject(obj);
+        }
         public static void VisibleInInspector(Component com, string keyword, bool pinObj)
         {
             Selection.activeGameObject = com.gameObject;

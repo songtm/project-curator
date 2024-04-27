@@ -173,8 +173,7 @@ namespace SFrame
                     }
                     else if (Event.current.button == 0) //left
                     {
-                        CustomEditorUtil.VisibleBuiltinWindow(BuildInWinType.ProjectBrowser);
-                        EditorGUIUtility.PingObject(AssetDatabase.LoadAssetAtPath<Object>(path));
+                        CustomEditorUtil.VisibleInProjectWindow(AssetDatabase.LoadAssetAtPath<Object>(path));
                     }
                 }
             }
