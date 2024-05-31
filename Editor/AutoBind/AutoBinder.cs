@@ -268,7 +268,7 @@ namespace AutoBind
 
             var content = File.ReadAllText(path);
             if (!content.Contains("ReSharper disable InconsistentNaming"))
-                content = "// ReSharper disable InconsistentNaming\n" + content;
+                content = $"// ReSharper disable InconsistentNaming{Environment.NewLine}" + content;
             foreach (var keyValuePair in _bindDicDst)
             {
                 var com = keyValuePair.Key;
@@ -301,10 +301,11 @@ namespace AutoBind
                 }
                 else if (!string.IsNullOrEmpty(name)) //new
                 {
-                    var match = Regex.Match(content, @"([\s\S]*)(IAutoBindable.*[\s\S].*?\{)([\s\S]*)");
+                    var clsName = _luaBehaviour.name;
+                    var match = Regex.Match(content, $@"([\s\S]*)({clsName}.*[\s\S].*?\{{)([\s\S]*)");
                     if (match.Success)
                     {
-                        var line = $"\n\t[SerializeField] private {com.GetType().Name} {name};";
+                        var line = $"{Environment.NewLine}\t[SerializeField] private {com.GetType().Name} {name};";
                         content = match.Groups[1].ToString() + match.Groups[2] + line + match.Groups[3];
                         _waitBindComs.Add(com);
                         _waitBindNames.Add(name);
