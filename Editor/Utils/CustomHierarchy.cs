@@ -239,7 +239,7 @@ namespace SFrame
             var refCount = InjectPaths.TryGetValue(instanceId, out var value) ? value : 0;
             if (InjectPaths.ContainsKey(goId)) //*表示子级绑定了变量; ✫表示本层绑定了变量;*✫表示前两者都有;年代久远已经忘记实现细节:<
             {
-                Debug.Log($"---{instanceId} {goId} {go.name} {InjectPaths[instanceId]}");
+                // Debug.Log($"---{instanceId} {goId} {go.name} {InjectPaths[instanceId]}");
                 var num = InjectPaths[goId];
                 var contain = num % 1000 != 0 ? "*" : "";
                 var str = num < 1000 ? "*" : contain + "✫";
