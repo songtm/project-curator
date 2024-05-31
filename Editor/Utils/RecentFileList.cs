@@ -16,7 +16,7 @@ namespace SFrame
 {
     public  class RecentFileList : ScriptableObject
     {
-        private static string cachePath = "Assets/Settings/recentFilesCache.asset";
+        private static string cachePath = "Packages/com.ogxd.project-curator/Editor/Utils//recentFilesCache.asset";
         
         [SerializeField] public List<string> recentFiles;
         
@@ -38,6 +38,7 @@ namespace SFrame
         [InitializeOnLoadMethod]
         private static RecentFileList Load()
         {
+            
             // if (_recenFilesObject != null) return;
             _instance = AssetDatabase.LoadAssetAtPath<RecentFileList>(cachePath);
             if (_instance == null)
