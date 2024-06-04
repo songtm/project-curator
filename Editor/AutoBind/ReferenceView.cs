@@ -16,6 +16,7 @@ namespace AutoBind
         static void Init() => GetWindow<ReferenceView>().Show();
 
         public static readonly Dictionary<int, int> InjectPaths = new Dictionary<int, int>();
+        public static bool OverrideInjectPaths = false;
         public static readonly HashSet<Component> InjectedComs = new HashSet<Component>();
 
         private readonly Dictionary<int, List<RefInfo>> _infoDic = new Dictionary<int, List<RefInfo>>();
@@ -42,6 +43,24 @@ namespace AutoBind
             Repaint();
         }
 
+        private void OnBecameInvisible()
+        {
+            OverrideInjectPaths = false;
+        }
+
+        private void OnBecameVisible()
+        {
+            OverrideInjectPaths = true;
+        }
+
+        private void Cleanup()
+        {
+            InjectedComs.Clear();
+            InjectPaths.Clear();
+            _mono2Path.Clear();
+            _infoDic.Clear();
+        }
+
         private void OnEnable()
         {
             _dirty = true;
@@ -51,6 +70,7 @@ namespace AutoBind
 
         private void OnDisable()
         {
+            Cleanup();
             EditorApplication.hierarchyChanged -= EditorApplicationOnhierarchyChanged;
         }
 
@@ -143,6 +163,7 @@ namespace AutoBind
             }
 
             EditorGUILayout.EndHorizontal();
+            
             if (showSearchVar) OnGUISearchVarHeader();
 
             _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
@@ -294,10 +315,7 @@ namespace AutoBind
         private void FindReference()
         {
             _dirty = false;
-            InjectedComs.Clear();
-            InjectPaths.Clear();
-            _mono2Path.Clear();
-            _infoDic.Clear();
+            Cleanup();
             EditorUtility.DisplayCancelableProgressBar("计算中", "", 0);
             var coms = PrefabStageUtility.GetCurrentPrefabStage() == null
                 ? FindObjectsOfType<Component>(true)

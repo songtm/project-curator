@@ -235,7 +235,7 @@ namespace SFrame
 
             if (_treeViewDirty) CreateInjectedCache();
             var goId = go.GetInstanceID();
-            var InjectPaths = ReferenceView.InjectPaths;
+            var InjectPaths = ReferenceView.OverrideInjectPaths? ReferenceView.InjectPaths : CustomHierarchy.InjectPaths;
             var refCount = InjectPaths.TryGetValue(instanceId, out var value) ? value : 0;
             if (InjectPaths.ContainsKey(goId)) //*表示子级绑定了变量; ✫表示本层绑定了变量;*✫表示前两者都有;年代久远已经忘记实现细节:<
             {
@@ -278,6 +278,7 @@ namespace SFrame
                         if (prop.name.StartsWith("c_"))
                         {
                             var com = prop.objectReferenceValue as Component;
+                            if (com == null) continue;
                             var injectedGo = com.gameObject;
                             var id = injectedGo.GetInstanceID();
                             if (!InjectPaths.ContainsKey(id))

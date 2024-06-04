@@ -123,13 +123,14 @@ namespace AutoBind
                 if (behav == null) CustomEditorUtil.ShowEditorTip("no same container", BuildInWinType.SceneView);
             }
 
-            if (_luaBehaviour != behav)
+            // if (_luaBehaviour != behav)
+            if (_luaBehaviour != behav && behav != null)//todo check this 防止切换空白时也提示(下面的保存)
             {
                 if (_needSaveInjection && _bindDicDst != null)
                 {
                     if (EditorUtility.DisplayDialog("", "切换绑定容器, 是否保存?", "保存", "忽略"))
                     {
-                        SaveCurInjection();
+                        SaveCurInjection(true);
                     }
 
                     _needSaveInjection = false;
@@ -146,8 +147,8 @@ namespace AutoBind
                 }
             }
 
-            _uiEnabled = _luaBehaviour != null
-                         && !PrefabUtility.IsPartOfAnyPrefab(_luaBehaviour)
+            _uiEnabled = behav != null
+                         && !PrefabUtility.IsPartOfAnyPrefab(behav)
                          && !_luaBehaviour.gameObject.name.EndsWith("(Clone)");
             // if (_uiEnabled)
             // {
@@ -259,10 +260,10 @@ namespace AutoBind
             _needSaveInjection = true;
         }
 
-        private void SaveCurInjection()
+        private void SaveCurInjection(bool force = false)
         {
             _needSaveInjection = false;
-            if (!_uiEnabled) return;
+            if (!_uiEnabled && !force) return;
             var script = MonoScript.FromMonoBehaviour(_luaBehaviour);
             var path = AssetDatabase.GetAssetPath(script);
 
