@@ -34,3 +34,6 @@ sysinfo.txt
 # Builds
 *.apk
 *.unitypackage
+/Editor/Utils/.idea/
+/Editor/Utils/recentFilesCache.asset
+/Editor/Utils/recentFilesCache.asset.meta

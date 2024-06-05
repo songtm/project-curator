@@ -7,7 +7,6 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using SFrame;
 using UnityEditor;
-
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Rendering;
@@ -17,6 +16,7 @@ using Object = UnityEngine.Object;
     using UnityEditor.SceneManagement;
 #else
 using UnityEditor.Experimental.SceneManagement;
+
 #endif
 
 // ReSharper disable IdentifierTypo
@@ -110,6 +110,7 @@ namespace AutoBind
                         behav = null;
                         break;
                     }
+
                     if (behav == null)
                     {
                         behav = curBehav;
@@ -120,11 +121,12 @@ namespace AutoBind
                         break;
                     }
                 }
+
                 if (behav == null) CustomEditorUtil.ShowEditorTip("no same container", BuildInWinType.SceneView);
             }
 
             // if (_luaBehaviour != behav)
-            if (_luaBehaviour != behav && behav != null)//todo check this 防止切换空白时也提示(下面的保存)
+            if (_luaBehaviour != behav && behav != null) //todo check this 防止切换空白时也提示(下面的保存)
             {
                 if (_needSaveInjection && _bindDicDst != null)
                 {
@@ -348,6 +350,12 @@ namespace AutoBind
         private void DrawMultiSelGui()
         {
             EditorGUILayout.Space();
+
+            if (Selection.transforms.Length == 2 && GUILayout.Button("复制绑定", GUILayout.MaxWidth(60)))
+            {
+                CopyUIBinding.copyLuaBindingMenu();
+            }
+
             EditorGUILayout.BeginHorizontal();
             EditorGUIUtility.labelWidth = 80;
             _objNameFormat = EditorGUILayout.TextField("batch rename", _objNameFormat, GUILayout.ExpandWidth(true));
@@ -365,6 +373,7 @@ namespace AutoBind
                     obj.name = string.Format(_objNameFormat, i + 1);
                 }
             }
+
             EditorGUIUtility.labelWidth = 0;
             EditorGUILayout.EndHorizontal();
         }
@@ -387,6 +396,7 @@ namespace AutoBind
                     EditorGUIUtility.PingObject(AssetDatabase.LoadAssetAtPath<Object>(assetPath));
                 }
             }
+
             EditorGUIUtility.labelWidth = 0;
             EditorGUILayout.EndHorizontal();
             EditorGUILayout.Space();
@@ -395,14 +405,16 @@ namespace AutoBind
             {
                 Resources.UnloadUnusedAssets();
             }
+
             if (GUILayout.Button("GC"))
             {
                 GC.Collect();
             }
+
             if (GUILayout.Button("CurSelObj"))
             {
                 var sel = EventSystem.current.currentSelectedGameObject;
-                
+
                 if (sel != null)
                 {
                     Debug.Log($"sel obj:{sel.name}");
@@ -414,8 +426,10 @@ namespace AutoBind
                     ShowNotification(new GUIContent("sel object:null"));
                 }
             }
+
             EditorGUILayout.EndHorizontal();
         }
+
         void OnGUI()
         {
             if (_selGo == null)
