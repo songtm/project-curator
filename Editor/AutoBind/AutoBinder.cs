@@ -347,11 +347,12 @@ namespace AutoBind
             GUILayout.EndHorizontal();
         }
 
+
         private void DrawMultiSelGui()
         {
             EditorGUILayout.Space();
 
-            if (Selection.transforms.Length == 2 && GUILayout.Button("复制绑定", GUILayout.MaxWidth(60)))
+            if (Selection.gameObjects.Length == 2 && GUILayout.Button("复制绑定", GUILayout.MaxWidth(60)))
             {
                 CopyUIBinding.copyLuaBindingMenu();
             }
@@ -434,7 +435,7 @@ namespace AutoBind
         {
             if (_selGo == null)
             {
-                if (Selection.transforms.Length > 1)
+                if (Selection.gameObjects.Length > 1)
                 {
                     DrawMultiSelGui();
                 }

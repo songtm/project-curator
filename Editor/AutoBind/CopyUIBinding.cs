@@ -32,7 +32,7 @@ namespace AutoBind
             GenericMenu menu = new GenericMenu();
             menu.AddItem(new GUIContent("复制绑定"), false, () => { copyLuaBinding(true); });
             menu.AddItem(new GUIContent("复制绑定+位置"), false, () => { copyLuaBinding(true); });
-            menu.AddItem(new GUIContent("复制绑定+位置-父子"), false, () => { copyLuaBinding(true, true); });
+            menu.AddItem(new GUIContent("*复制绑定+位置-父子"), false, () => { copyLuaBinding(true, true); });
             menu.AddItem(new GUIContent("复制绑定+位置-父子-rectSize"), false,
                 () => { copyLuaBinding(true, true, true); });
 
@@ -117,7 +117,7 @@ namespace AutoBind
             return com2name;
         }
 
-        public static void copyLuaBinding(bool copyPos = false, bool syncParent = false, bool copyAnchorAndSize = false)
+        public static void copyLuaBinding(bool copyPos = false, bool syncParent = false, bool copyRectSize = false)
         {
             var rename = true;
             var objs = Selection.objects;
@@ -149,7 +149,7 @@ namespace AutoBind
                 return;
             }
 
-            copyPosAndSize(obj0, obj1, syncParent, copyPos, copyAnchorAndSize);
+            copyPosAndSize(obj0, obj1, syncParent, copyPos, copyRectSize);
 
 
             Debug.Log($"更新绑定开始----------------------");
@@ -221,7 +221,7 @@ namespace AutoBind
 
         // Undo.DestroyObjectImmediate(obj0);       
         public static void copyPosAndSize(GameObject obj0, GameObject obj1, bool setSameParent, bool copyPos,
-            bool copyAnchorAndSize)
+            bool copyRectSize)
         {
             Undo.RecordObject(obj1.transform, "copyPosAndSize");
             // Undo.RegisterCompleteObjectUndo(comNew.gameObject, "rename");
@@ -235,7 +235,7 @@ namespace AutoBind
             var rectTransform0 = obj0.GetComponent<RectTransform>();
             var rectTransform1 = obj1.GetComponent<RectTransform>();
 
-            if (rectTransform0 && copyAnchorAndSize)
+            if (rectTransform0 && copyRectSize)
             {
                 rectTransform1.anchorMin = rectTransform0.anchorMin;
                 rectTransform1.anchorMax = rectTransform0.anchorMax;
@@ -246,8 +246,17 @@ namespace AutoBind
 
             if (copyPos)
             {
-                if (rectTransform0) rectTransform1.anchoredPosition = rectTransform0.anchoredPosition;
-                obj1.transform.position = obj0.transform.position;
+                if (rectTransform0 && setSameParent) //复制父子关系及位置时 同步anchor
+                {
+                    rectTransform1.anchorMin = rectTransform0.anchorMin;
+                    rectTransform1.anchorMax = rectTransform0.anchorMax;
+                    rectTransform1.pivot = rectTransform0.pivot;
+                    rectTransform1.anchoredPosition = rectTransform0.anchoredPosition;
+                }
+                else
+                {
+                    obj1.transform.position = obj0.transform.position;    
+                }
             }
         }
     }
