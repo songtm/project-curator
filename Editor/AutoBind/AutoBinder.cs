@@ -198,9 +198,8 @@ namespace AutoBind
         private static string MakeBindName(string objName, Type com)
         {
             if (objName.StartsWith("#")) objName = objName.Substring(1);
-            var comName = ComNameDic.ContainsKey(com.Name) ? ComNameDic[com.Name] : com.Name;
-
-            comName = char.ToLower(comName[0]) + comName.Substring(1);
+            var comName = ComNameDic.ContainsKey(com.Name) ? ComNameDic[com.Name] : ""; //com.Name;
+            if (comName.Length > 1) comName = char.ToLower(comName[0]) + comName.Substring(1);
             foreach (var name in ComNameDic.Keys)
             {
                 if (objName.ToLower().StartsWith(name.ToLower()))
@@ -224,7 +223,8 @@ namespace AutoBind
 
                 return x.ToString();
             }));
-            return "c_" + comName + result;
+            if (comName.Length > 0) return "c_" + comName + result;
+            return "c_" + char.ToLower(result[0]) + result.Substring(1);
         }
 
         private void OnClickComponent(Component component, string bindName)
