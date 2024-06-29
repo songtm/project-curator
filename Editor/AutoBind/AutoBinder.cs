@@ -25,11 +25,11 @@ namespace AutoBind
 {
     public class AutoBinder : EditorWindow
     {
-        [MenuItem("Tools/AutoBinder")]
+        [MenuItem("Tools/AutoBinder", false, 200)]
         static void Init()
         {
             // Get existing open window or if none, make a new one:
-            AutoBinder window = (AutoBinder) EditorWindow.GetWindow(typeof(AutoBinder));
+            AutoBinder window = (AutoBinder) EditorWindow.GetWindow<AutoBinder>("AutoBinder");
             window.Show();
         }
 
@@ -126,7 +126,7 @@ namespace AutoBind
             }
 
             // if (_luaBehaviour != behav)
-            if (_luaBehaviour != behav && behav != null) //todo check this 防止切换空白时也提示(下面的保存)
+            if ((_luaBehaviour != behav || _luaBehaviour == null) && behav != null) //todo check this 防止切换空白时也提示(下面的保存)
             {
                 if (_needSaveInjection && _bindDicDst != null)
                 {

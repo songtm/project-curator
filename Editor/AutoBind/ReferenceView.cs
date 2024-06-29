@@ -12,8 +12,8 @@ namespace AutoBind
 {
     public class ReferenceView : EditorWindow
     {
-        [MenuItem("Tools/ReferenceView")]
-        static void Init() => GetWindow<ReferenceView>().Show();
+        [MenuItem("Tools/ReferenceView", false, 200)]
+        static void Init() => GetWindow<ReferenceView>("ReferenceView").Show();
 
         public static readonly Dictionary<int, int> InjectPaths = new Dictionary<int, int>();
         public static bool OverrideInjectPaths = false;
