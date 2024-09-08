@@ -53,6 +53,9 @@ namespace AutoBind
 
         private void OnEnable()
         {
+            _waitBindNames ??= new List<string>();
+            _waitBindComs ??= new List<Component>();
+            
             CheckBindLink();
 
             UpdateSelGo();
