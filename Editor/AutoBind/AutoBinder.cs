@@ -308,7 +308,7 @@ namespace AutoBind
                 else if (!string.IsNullOrEmpty(name)) //new
                 {
                     var clsName = _luaBehaviour.GetType().Name;
-                    var match = Regex.Match(content, $@"([\s\S]*)({clsName}.*[\s\S].*?\{{)([\s\S]*)");
+                    var match = Regex.Match(content, $@"([\s\S]*?)({clsName}.*[\s\S].*?\{{)([\s\S]*)");
                     if (match.Success)
                     {
                         var line = $"{Environment.NewLine}\t[SerializeField] private {com.GetType().Name} {name};";
